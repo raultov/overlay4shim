@@ -2,14 +2,8 @@ import cairo
 import rsvg
 import csv
 import sys
-
-if len(sys.argv) < 3:
-    print 'usage: ',sys.argv[0], ' <file.csv> <template.svg>'
-    sys.exit()
-
-with open(sys.argv[1], 'rb') as f:
-    reader = csv.reader(f)
-    rows = list(reader)
+from lxml import etree
+import datetime, dateutil.parser, dateutil.tz
 
 # CSV constants
 YEAR = 0
@@ -23,7 +17,59 @@ CADENCE = 7
 POWER = 8
 HEART_RATE = 9
 
-with open(sys.argv[2], 'r') as svgFile:
+if len(sys.argv) < 4:
+    print 'usage: ',sys.argv[0], ' <file.tcx> <file.csv> <template.svg>'
+    sys.exit()   
+    
+    
+# Read csv file
+with open(sys.argv[2], 'rb') as f:
+    reader = csv.reader(f)
+    rowsCsv = list(reader)    
+    
+to_zone = dateutil.tz.tzlocal()    
+beginningDate = datetime.datetime(int(rowsCsv[1][YEAR]), int(rowsCsv[1][MONTH]), int(rowsCsv[1][DAY]), int(rowsCsv[1][HOUR]), int(rowsCsv[1][MINUTE]), int(rowsCsv[1][SECOND]), tzinfo=to_zone)
+    
+# Read tcx file    
+doc= etree.parse(sys.argv[1])
+namespace = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2'
+
+#from_zone = dateutil.tz.tzutc()
+
+
+i = 0
+dateFound = False
+for trackpoint in doc.xpath('//ns:Trackpoint', namespaces={'ns': namespace}):
+	# Iterate over attributes of datafield
+	d = dateutil.parser.parse(trackpoint.find('.//ns:Time', namespaces={'ns': namespace}).text)
+	#d = d.replace(tzinfo=from_zone)
+	d = d.astimezone(to_zone)
+
+	if d > beginningDate:
+		print beginningDate.strftime('%m/%d/%Y %H:%M:%S')
+		print d.strftime('%m/%d/%Y %H:%M:%S')
+		print i
+		dateFound = True
+		break
+	
+	i = i + 1
+	
+if dateFound == False:
+	print 'Files ', sys.argv[1], ' and ', sys.argv[2], ' do not match'
+	sys.exit()
+
+#        for attrib in df.attrib:
+#       print '@' + attrib + '=' + df.attrib[attrib]
+
+        # subfield is a child of datafield, and iterate
+    #subfields = df.getchildren()
+    #for subfield in subfields:
+    #   print 'Value=' + subfield.text
+
+    
+'''    
+
+with open(sys.argv[3], 'r') as svgFile:
     svgData=svgFile.read().replace('\n', '')
 
 i = 1
@@ -65,7 +111,7 @@ while i < len(rows):
     img.write_to_png("myfile%d.png" % i)  
     print "row %d: %s" % (i,row)
     i = i + 1
-    
+''' 
     
     
 
