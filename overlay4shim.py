@@ -73,62 +73,79 @@ if intervalFound == False:
     print 'Files ', sys.argv[1], ' and ', sys.argv[2], ' do not match because of the dates'
     sys.exit()
 
-sequenceFound = False
-sequenceStartIndex = 0
-previousCandidate = candidateNodes[0]
-followingSequence = False
+#sequenceFound = False
+#sequenceStartIndex = 0
+#previousCandidate = candidateNodes[0]
+#followingSequence = False
 i = 0
 j = 0
 firstNodeFound = False
+selectedNodes = []
 
 while i < len(candidateNodes):
-    candidate = candidateNodes[i]
-    dateCandidate = dateutil.parser.parse(candidate.find('.//ns:Time', namespaces={'ns': namespace}).text)
-    dateCandidate = dateCandidate.astimezone(to_zone)
-    
-    heartRateCandidate = int(candidate.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text)
-    
-    if firstNodeFound == False:
-        j = 0
-        while j < MAX_RANGE_FIRST_SCANNING and j < len(rowsCsv):
-            if int(rowsCsv[j][HEART_RATE]) == heartRateCandidate:
-                firstNodeFound = True
-                break
-            j = j + 1
-    else:
-        datePreviousCandidate = dateutil.parser.parse(candidateNodes[i-1].find('.//ns:Time', namespaces={'ns': namespace}).text)
-        datePreviousCandidate = datePreviousCandidate.astimezone(to_zone)
-        j = j + int((dateCandidate - datePreviousCandidate).total_seconds())
-        
-        if j >= len(rowsCsv):
-            break
-        
-        print j, ' ', dateCandidate, ' ', rowsCsv[j][HEART_RATE]
-        
-        if j - 1 >= 0:
-            heartRatePreviousRow = int(rowsCsv[j-1][HEART_RATE])
-        else:
-            heartRatePreviousRow = int(row[HEART_RATE])
-            
-        heartRateRow = int(rowsCsv[j][HEART_RATE])
-        
-        if j + 1 <len(rowsCsv):
-            heartRateNextRow = int(rowsCsv[j+1][HEART_RATE])
-        else:
-            heartRateNextRow = int(row[HEART_RATE])
-            
-        if heartRateCandidate == heartRateRow or heartRateCandidate == heartRateRow - 1 or heartRateCandidate == heartRateRow + 1:
-            j = j
-        elif heartRateCandidate == heartRatePreviousRow or heartRateCandidate == heartRatePreviousRow - 1 or heartRateCandidate == heartRatePreviousRow + 1:
-            j = j - 1
-        elif heartRateCandidate == heartRateNextRow or heartRateCandidate == heartRateNextRow -1 or heartRateCandidate == heartRateNextRow + 1:
-            j = j + 1
-        else:
-            firstNodeFound = False
-        
-    i = i + 1
-    
+	candidate = candidateNodes[i]
+
+	dateCandidate = dateutil.parser.parse(candidate.find('.//ns:Time', namespaces={'ns': namespace}).text)
+	dateCandidate = dateCandidate.astimezone(to_zone)
+
+	heartRateCandidate = int(candidate.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text)
+
+	if firstNodeFound == False:
+		j = 0
+		while j < MAX_RANGE_FIRST_SCANNING and j < len(rowsCsv):
+			if int(rowsCsv[j][HEART_RATE]) == heartRateCandidate:
+				firstNodeFound = True
+				break
+			j = j + 1
+	else:
+		datePreviousCandidate = dateutil.parser.parse(candidateNodes[i-1].find('.//ns:Time', namespaces={'ns': namespace}).text)
+		datePreviousCandidate = datePreviousCandidate.astimezone(to_zone)
+		j = j + int((dateCandidate - datePreviousCandidate).total_seconds())
+
+		if j >= len(rowsCsv):
+			break
+			
+		# Append current candidate to the list of selected Nodes
+		selectedNodes.append(candidate)			
+
+		#print j, ' ', dateCandidate, ' ', rowsCsv[j][HEART_RATE]
+
+		if j - 1 >= 0:
+			heartRatePreviousRow = int(rowsCsv[j-1][HEART_RATE])
+		else:
+			heartRatePreviousRow = int(row[HEART_RATE])
+
+		heartRateRow = int(rowsCsv[j][HEART_RATE])
+
+		if j + 1 <len(rowsCsv):
+			heartRateNextRow = int(rowsCsv[j+1][HEART_RATE])
+		else:
+			heartRateNextRow = int(row[HEART_RATE])
+
+		if heartRateCandidate == heartRateRow or heartRateCandidate == heartRateRow - 1 or heartRateCandidate == heartRateRow + 1:
+			j = j
+		elif heartRateCandidate == heartRatePreviousRow or heartRateCandidate == heartRatePreviousRow - 1 or heartRateCandidate == heartRatePreviousRow + 1:
+			j = j - 1
+		elif heartRateCandidate == heartRateNextRow or heartRateCandidate == heartRateNextRow -1 or heartRateCandidate == heartRateNextRow + 1:
+			j = j + 1
+		else:
+			firstNodeFound = False
+			# Clear list of selected Nodes
+			selectedNodes = []
+
+	i = i + 1
+
 print j
+
+i = 0
+while i < len(selectedNodes):
+	selectedNode = selectedNodes[i]
+	dateNode = dateutil.parser.parse(selectedNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
+	dateNode = dateNode.astimezone(to_zone)
+	
+	print i, ' ', dateNode
+	
+	i = i + 1
     
 '''
     if followingSequence == True:
