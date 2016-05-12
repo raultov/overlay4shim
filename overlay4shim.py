@@ -101,6 +101,9 @@ while i < len(candidateNodes):
 				selectedNodes.append(candidate)	
 				break
 			j = j + 1
+			
+                # Append current candidate to the list of selected Nodes
+		selectedNodes.append(candidate)
 	else:
 		datePreviousCandidate = dateutil.parser.parse(candidateNodes[i-1].find('.//ns:Time', namespaces={'ns': namespace}).text)
 		datePreviousCandidate = datePreviousCandidate.astimezone(to_zone)
