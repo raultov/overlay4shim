@@ -80,7 +80,6 @@ if intervalFound == False:
 i = 0
 j = 0
 firstNodeFound = False
-firstCsvRowMatching = 0
 selectedNodes = []
 
 while i < len(candidateNodes):
@@ -96,14 +95,10 @@ while i < len(candidateNodes):
 		while j < MAX_RANGE_FIRST_SCANNING and j < len(rowsCsv):
 			if int(rowsCsv[j][HEART_RATE]) == heartRateCandidate:
 				firstNodeFound = True
-				firstCsvRowMatching = j
 				# Append current candidate to the list of selected Nodes
-				selectedNodes.append(candidate)	
+				selectedNodes.append([candidate, j])	
 				break
 			j = j + 1
-			
-                # Append current candidate to the list of selected Nodes
-		selectedNodes.append(candidate)
 	else:
 		datePreviousCandidate = dateutil.parser.parse(candidateNodes[i-1].find('.//ns:Time', namespaces={'ns': namespace}).text)
 		datePreviousCandidate = datePreviousCandidate.astimezone(to_zone)
@@ -113,7 +108,7 @@ while i < len(candidateNodes):
 			break
 			
 		# Append current candidate to the list of selected Nodes
-		selectedNodes.append(candidate)			
+		selectedNodes.append([candidate, j])			
 
 		#print j, ' ', dateCandidate, ' ', rowsCsv[j][HEART_RATE]
 
@@ -141,19 +136,15 @@ while i < len(candidateNodes):
 			selectedNodes = []
 
 	i = i + 1
-
-print firstCsvRowMatching
-
+	
 i = 0
 while i < len(selectedNodes):
-	selectedNode = selectedNodes[i]
-	dateNode = dateutil.parser.parse(selectedNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
-	dateNode = dateNode.astimezone(to_zone)
-	heartRateNode = int(selectedNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text)
-	
-	print i, ' ', dateNode, ' ', heartRateNode
-	
-	i = i + 1
+    currentNode = selectedNodes[i][0]
+    dateNode = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
+    dateNode = dateNode.astimezone(to_zone)
+    heartRateNode = int(currentNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text)    
+    print i, ' ', dateNode, ' ', heartRateNode
+    i = i + 1
         
 # PNGs creation
 with open(sys.argv[3], 'r') as svgFile:
@@ -161,16 +152,29 @@ with open(sys.argv[3], 'r') as svgFile:
 
 i = 0
 j = 0
+nextIndex = selectedNodes[0][1] if len(selectedNodes) > 0 else 0
 while i < len(rowsCsv):
 	
-	currentNode = selectedNodes[j]
-	
-	if i < firstCsvRowMatching:
-		print 'First node still not reached'
+	if i < selectedNodes[0][1]:
+		#print 'First node still not reached'
+		i = i
 	else:
 		# Calculate difference in seconds between previous and
 		# current node
-		print 'First node reached or already passed'
+		#print 'First node reached or already passed'
+		if j + 1 < len(selectedNodes):
+                    nextIndex = selectedNodes[j+1][1]
+                
+                if i >= nextIndex and j + 1 < len(selectedNodes):
+                    j = j + 1
+                    
+        currentNode = selectedNodes[j][0]
+		
+	dateNode = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
+	dateNode = dateNode.astimezone(to_zone)
+	heartRateNode = int(currentNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text)
+	
+	print i, ' ', dateNode, ' ', heartRateNode		
 	
 	i = i + 1
 
