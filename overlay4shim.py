@@ -80,6 +80,7 @@ if intervalFound == False:
 i = 0
 j = 0
 firstNodeFound = False
+firstCsvRowMatching = 0
 selectedNodes = []
 
 while i < len(candidateNodes):
@@ -95,6 +96,9 @@ while i < len(candidateNodes):
 		while j < MAX_RANGE_FIRST_SCANNING and j < len(rowsCsv):
 			if int(rowsCsv[j][HEART_RATE]) == heartRateCandidate:
 				firstNodeFound = True
+				firstCsvRowMatching = j
+				# Append current candidate to the list of selected Nodes
+				selectedNodes.append(candidate)	
 				break
 			j = j + 1
 	else:
@@ -135,73 +139,39 @@ while i < len(candidateNodes):
 
 	i = i + 1
 
-print j
+print firstCsvRowMatching
 
 i = 0
 while i < len(selectedNodes):
 	selectedNode = selectedNodes[i]
 	dateNode = dateutil.parser.parse(selectedNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
 	dateNode = dateNode.astimezone(to_zone)
+	heartRateNode = int(selectedNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text)
 	
-	print i, ' ', dateNode
+	print i, ' ', dateNode, ' ', heartRateNode
 	
 	i = i + 1
-    
-'''
-    if followingSequence == True:
-        datePreviousCandidate = dateutil.parser.parse(candidateNodes[i-1].find('.//ns:Time', namespaces={'ns': namespace}).text)
-        datePreviousCandidate = datePreviousCandidate.astimezone(to_zone)
-        j = j + int((dateCandidate - datePreviousCandidate).total_seconds())
-        sequenceFound = True
-    else:
-        j = 0
-        sequenceFound = False
         
-    followingSequence = False
-
-    while j < len(rowsCsv):
-        row = rowsCsv[j]
-        #dateRow = datetime.datetime(int(row[YEAR]), int(row[MONTH]), int(row[DAY]), int(row[HOUR]), int(row[MINUTE]), int(row[SECOND]), tzinfo=to_zone)
-        if j - 1 >= 0:
-            heartRatePreviousRow = int(rowsCsv[j-1][HEART_RATE])
-        else:
-            heartRatePreviousRow = int(row[HEART_RATE])
-            
-        heartRateRow = int(row[HEART_RATE])
-        
-        if j + 1 <len(rowsCsv):
-            heartRateNextRow = int(rowsCsv[j+1][HEART_RATE])
-        else:
-            heartRateNextRow = int(row[HEART_RATE])
-        
-        if heartRateRow == heartRateCandidate or heartRateRow == heartRatePreviousRow or heartRateRow == heartRateNextRow:
-            followingSequence = True
-            break
-    
-        
-        j = j + 1
-        
-    i = i + 1
-        
-print sequenceFound      
-'''
-    
-
-
-#        for attrib in df.attrib:
-#       print '@' + attrib + '=' + df.attrib[attrib]
-
-        # subfield is a child of datafield, and iterate
-    #subfields = df.getchildren()
-    #for subfield in subfields:
-    #   print 'Value=' + subfield.text
-
-    
-'''    
-
+# PNGs creation
 with open(sys.argv[3], 'r') as svgFile:
     svgData=svgFile.read().replace('\n', '')
 
+i = 0
+j = 0
+while i < len(rowsCsv):
+	
+	currentNode = selectedNodes[j]
+	
+	if i < firstCsvRowMatching:
+		print 'First node still not reached'
+	else:
+		# Calculate difference in seconds between previous and
+		# current node
+		print 'First node reached or already passed'
+	
+	i = i + 1
+
+'''
 i = 1
 lastSpeed = '0'
 lastCadence = '0'
