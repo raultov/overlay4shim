@@ -5,7 +5,7 @@ import sys
 from lxml import etree
 import datetime, dateutil.parser, dateutil.tz
 
-#from pudb import set_trace; set_trace()
+from pudb import set_trace; set_trace()
 
 # CSV constants
 YEAR = 0
@@ -21,6 +21,7 @@ HEART_RATE = 9
 
 # Ohter constants
 MAX_RANGE_FIRST_SCANNING = 10
+MIN_MATCHING_THRESHOLD = 0.3
 
 if len(sys.argv) < 4:
     print 'usage: ',sys.argv[0], ' <file.tcx> <file.csv> <template.svg>'
@@ -129,9 +130,12 @@ while i < len(candidateNodes):
 		elif heartRateCandidate == heartRateNextRow or heartRateCandidate == heartRateNextRow -1 or heartRateCandidate == heartRateNextRow + 1:
 			j = j + 1
 		else:
-			firstNodeFound = False
-			# Clear list of selected Nodes
-			selectedNodes = []
+                        ratio = float(j) / len(rowsCsv)
+                        
+                        if ratio < MIN_MATCHING_THRESHOLD:
+                            firstNodeFound = False
+                            # Clear list of selected Nodes
+                            selectedNodes = []
 
 	i = i + 1
         
@@ -187,9 +191,10 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
         handle.render_cairo(ctx)
 
         img.write_to_png("myfile%d.png" % i)          
-	
+
 	i = i + 1
 
+    
     
 
 
