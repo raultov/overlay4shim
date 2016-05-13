@@ -40,7 +40,6 @@ to_zone = dateutil.tz.tzlocal()
 beginningDate = datetime.datetime(int(rowsCsv[0][YEAR]), int(rowsCsv[0][MONTH]), int(rowsCsv[0][DAY]), int(rowsCsv[0][HOUR]), int(rowsCsv[0][MINUTE]), int(rowsCsv[0][SECOND]), tzinfo=to_zone)
 endingDate = datetime.datetime(int(rowsCsv[n][YEAR]), int(rowsCsv[n][MONTH]), int(rowsCsv[n][DAY]), int(rowsCsv[n][HOUR]), int(rowsCsv[n][MINUTE]), int(rowsCsv[n][SECOND]), tzinfo=to_zone)
 
-
 beginningDateSub60 = beginningDate - datetime.timedelta(seconds=60)
 endingDatePlus60 = endingDate + datetime.timedelta(seconds=60)
     
@@ -52,31 +51,28 @@ i = 0
 intervalFound = False
 trackpointNodes = doc.xpath('//ns:Trackpoint', namespaces={'ns': namespace})
 candidateNodes = []
+previousTrackPoint = None
 
 for trackpoint in trackpointNodes:
-    d = dateutil.parser.parse(trackpoint.find('.//ns:Time', namespaces={'ns': namespace}).text)
-    d = d.astimezone(to_zone)
+	d = dateutil.parser.parse(trackpoint.find('.//ns:Time', namespaces={'ns': namespace}).text)
+	d = d.astimezone(to_zone)
 
-    if d >= beginningDateSub60 and d < endingDatePlus60:
-        #print beginningDateSub60.strftime('%m/%d/%Y %H:%M:%S')
-        #print d.strftime('%m/%d/%Y %H:%M:%S')
-        #print i
-        intervalFound = True
-        candidateNodes.append(trackpoint)
+	if d >= beginningDateSub60 and d < endingDatePlus60:
+		intervalFound = True
+		candidateNodes.append(trackpoint)
 
-    if d >= endingDatePlus60:
-        break
+	if d >= endingDatePlus60:
+		break
 
-    i = i + 1
+	if intervalFound == False:
+		previousTrackPoint = trackpoint
+
+	i = i + 1
     
 if intervalFound == False:
     print 'Files ', sys.argv[1], ' and ', sys.argv[2], ' do not match because of the dates'
     sys.exit()
 
-#sequenceFound = False
-#sequenceStartIndex = 0
-#previousCandidate = candidateNodes[0]
-#followingSequence = False
 i = 0
 j = 0
 firstNodeFound = False
@@ -145,6 +141,8 @@ while i < len(selectedNodes):
     heartRateNode = int(currentNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text)    
     print i, ' ', dateNode, ' ', heartRateNode
     i = i + 1
+    
+print ''
         
 # PNGs creation
 with open(sys.argv[3], 'r') as svgFile:
@@ -153,15 +151,11 @@ with open(sys.argv[3], 'r') as svgFile:
 i = 0
 j = 0
 nextIndex = selectedNodes[0][1] if len(selectedNodes) > 0 else 0
-while i < len(rowsCsv):
+currentNode = selectedNodes[0][0] if len(selectedNodes) > 0 else None
+while i < len(rowsCsv) and len(selectedNodes) > 0:
 	
-	if i < selectedNodes[0][1]:
-		#print 'First node still not reached'
-		i = i
-	else:
-		# Calculate difference in seconds between previous and
-		# current node
-		#print 'First node reached or already passed'
+	if i >= selectedNodes[0][1]:
+		# The first node has been overtaken
 		if j + 1 < len(selectedNodes):
                     nextIndex = selectedNodes[j+1][1]
                 
@@ -172,7 +166,10 @@ while i < len(rowsCsv):
 		
 	dateNode = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
 	dateNode = dateNode.astimezone(to_zone)
-	heartRateNode = int(currentNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text)
+	heartRateNode = currentNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text
+	
+	if j == 0 and previousTrackPoint != None:
+		print 'First Node still being processed'	
 	
 	print i, ' ', dateNode, ' ', heartRateNode		
 	
