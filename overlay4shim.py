@@ -51,7 +51,6 @@ i = 0
 intervalFound = False
 trackpointNodes = doc.xpath('//ns:Trackpoint', namespaces={'ns': namespace})
 candidateNodes = []
-previousTrackPoint = None
 
 for trackpoint in trackpointNodes:
 	d = dateutil.parser.parse(trackpoint.find('.//ns:Time', namespaces={'ns': namespace}).text)
@@ -64,9 +63,6 @@ for trackpoint in trackpointNodes:
 	if d >= endingDatePlus60:
 		break
 
-	if intervalFound == False:
-		previousTrackPoint = trackpoint
-
 	i = i + 1
     
 if intervalFound == False:
@@ -77,6 +73,7 @@ i = 0
 j = 0
 firstNodeFound = False
 selectedNodes = []
+previousTrackPoint = None
 
 while i < len(candidateNodes):
 	candidate = candidateNodes[i]
@@ -93,7 +90,12 @@ while i < len(candidateNodes):
 				firstNodeFound = True
 				# Append current candidate to the list of selected Nodes
 				selectedNodes.append([candidate, j])	
+				
+				if i - 1 >= 0:
+                                    previousTrackPoint = candidateNodes[i-1]
+				
 				break
+
 			j = j + 1
 	else:
 		datePreviousCandidate = dateutil.parser.parse(candidateNodes[i-1].find('.//ns:Time', namespaces={'ns': namespace}).text)
@@ -132,17 +134,6 @@ while i < len(candidateNodes):
 			selectedNodes = []
 
 	i = i + 1
-	
-i = 0
-while i < len(selectedNodes):
-    currentNode = selectedNodes[i][0]
-    dateNode = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
-    dateNode = dateNode.astimezone(to_zone)
-    heartRateNode = int(currentNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text)    
-    print i, ' ', dateNode, ' ', heartRateNode
-    i = i + 1
-    
-print ''
         
 # PNGs creation
 with open(sys.argv[3], 'r') as svgFile:
@@ -160,63 +151,45 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
                     nextIndex = selectedNodes[j+1][1]
                 
                 if i >= nextIndex and j + 1 < len(selectedNodes):
+                    previousTrackPoint = selectedNodes[j][0]
                     j = j + 1
                     
         currentNode = selectedNodes[j][0]
 		
 	dateNode = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
 	dateNode = dateNode.astimezone(to_zone)
-	heartRateNode = currentNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text
+	heartRate = currentNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text
 	
-	if j == 0 and previousTrackPoint != None:
-		print 'First Node still being processed'	
+	speed = 0
+	if previousTrackPoint != None:
+            currentDistance = float(currentNode.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
+            previousDistance = float(previousTrackPoint.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
+            distance = currentDistance - previousDistance
+            
+            currentTime = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
+            previousTime = dateutil.parser.parse(previousTrackPoint.find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
+            timePassed = float((currentTime - previousTime).total_seconds())
+        
+            speed = int((distance / timePassed) * 3.6)
+            
+        cadence = currentNode.find('.//ns:Cadence', namespaces={'ns': namespace}).text
 	
-	print i, ' ', dateNode, ' ', heartRateNode		
+	print i, ' ', dateNode, ' ', heartRate, ' ', speed, ' ', cadence
+	
+        svgDataMod = svgData.replace("SPEED", str(speed))
+        svgDataMod = svgDataMod.replace("CADENCE", cadence)
+        svgDataMod = svgDataMod.replace("HEART", heartRate)
+        
+        img = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1280,720)
+        ctx = cairo.Context(img)
+    
+        handle = rsvg.Handle(None, svgDataMod)
+        handle.render_cairo(ctx)
+
+        img.write_to_png("myfile%d.png" % i)          
 	
 	i = i + 1
 
-'''
-i = 1
-lastSpeed = '0'
-lastCadence = '0'
-lastHeartRate = '0'
-
-while i < len(rows):
-    row = rows[i]
-    
-    if row[SPEED] == '' or row[SPEED] == '0':
-        speed = lastSpeed
-    else:
-        speed = row[SPEED]
-    lastSpeed = speed
-    
-    if row[CADENCE] == '' or row[CADENCE] == '0':
-        cadence = lastCadence
-    else:
-        cadence = row[CADENCE]
-    lastCadence = cadence
-    
-    if row[HEART_RATE] == '' or row[HEART_RATE] == '0':
-        heartRate = lastHeartRate
-    else:
-        heartRate = row[HEART_RATE]
-    lastHeartRate = heartRate
-    
-    svgDataMod = svgData.replace("SPEED", speed)
-    svgDataMod = svgDataMod.replace("CADENCE", cadence)
-    svgDataMod = svgDataMod.replace("HEART", heartRate)
-    
-    img = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1280,720)
-    ctx = cairo.Context(img)
-    
-    handle = rsvg.Handle(None, svgDataMod)
-    handle.render_cairo(ctx)
-
-    img.write_to_png("myfile%d.png" % i)  
-    print "row %d: %s" % (i,row)
-    i = i + 1
-''' 
-    
     
 
 
