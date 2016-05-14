@@ -21,7 +21,7 @@ HEART_RATE = 9
 
 # Ohter constants
 MAX_RANGE_FIRST_SCANNING = 10
-MIN_MATCHING_THRESHOLD = 0.3
+MIN_MATCHING_RATIO = 0.3
 
 if len(sys.argv) < 4:
     print 'usage: ',sys.argv[0], ' <file.tcx> <file.csv> <template.svg>'
@@ -41,8 +41,8 @@ to_zone = dateutil.tz.tzlocal()
 beginningDate = datetime.datetime(int(rowsCsv[0][YEAR]), int(rowsCsv[0][MONTH]), int(rowsCsv[0][DAY]), int(rowsCsv[0][HOUR]), int(rowsCsv[0][MINUTE]), int(rowsCsv[0][SECOND]), tzinfo=to_zone)
 endingDate = datetime.datetime(int(rowsCsv[n][YEAR]), int(rowsCsv[n][MONTH]), int(rowsCsv[n][DAY]), int(rowsCsv[n][HOUR]), int(rowsCsv[n][MINUTE]), int(rowsCsv[n][SECOND]), tzinfo=to_zone)
 
-beginningDateSub60 = beginningDate - datetime.timedelta(seconds=60)
-endingDatePlus60 = endingDate + datetime.timedelta(seconds=60)
+beginningDateSub60 = beginningDate - datetime.timedelta(seconds=5)
+endingDatePlus60 = endingDate + datetime.timedelta(seconds=5)
     
 # Read tcx file    
 doc= etree.parse(sys.argv[1])
@@ -87,7 +87,16 @@ while i < len(candidateNodes):
 	if firstNodeFound == False:
 		j = 0
 		while j < MAX_RANGE_FIRST_SCANNING and j < len(rowsCsv):
-			if int(rowsCsv[j][HEART_RATE]) == heartRateCandidate:
+                    
+                        rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)
+                        secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
+                        diff = 1
+                        if secondsDiff <=1:
+                            diff = 3
+                        elif secondsDiff <= 2:
+                            diff = 2
+                        
+			if abs(int(rowsCsv[j][HEART_RATE]) - heartRateCandidate) <= diff:
 				firstNodeFound = True
 				# Append current candidate to the list of selected Nodes
 				selectedNodes.append([candidate, j])	
@@ -122,17 +131,25 @@ while i < len(candidateNodes):
 			heartRateNextRow = int(rowsCsv[j+1][HEART_RATE])
 		else:
 			heartRateNextRow = int(row[HEART_RATE])
+			
+                rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)			
+                secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
+                diff = 2
+                if secondsDiff <=1:
+                    diff = 4
+                elif secondsDiff <= 2:
+                    diff = 3			
 
-		if heartRateCandidate == heartRateRow or heartRateCandidate == heartRateRow - 1 or heartRateCandidate == heartRateRow + 1:
+		if abs(heartRateCandidate - heartRateRow) <= diff:
 			j = j
-		elif heartRateCandidate == heartRatePreviousRow or heartRateCandidate == heartRatePreviousRow - 1 or heartRateCandidate == heartRatePreviousRow + 1:
+		elif abs(heartRateCandidate -  heartRatePreviousRow) <= diff:
 			j = j - 1
-		elif heartRateCandidate == heartRateNextRow or heartRateCandidate == heartRateNextRow -1 or heartRateCandidate == heartRateNextRow + 1:
+		elif abs(heartRateCandidate - heartRateNextRow) <= diff:
 			j = j + 1
 		else:
                         ratio = float(j) / len(rowsCsv)
                         
-                        if ratio < MIN_MATCHING_THRESHOLD:
+                        if ratio < MIN_MATCHING_RATIO and heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
                             firstNodeFound = False
                             # Clear list of selected Nodes
                             selectedNodes = []
