@@ -86,15 +86,16 @@ while i < len(candidateNodes):
 
 	if firstNodeFound == False:
 		j = 0
-		while j < MAX_RANGE_FIRST_SCANNING and j < len(rowsCsv):
+		#while j < MAX_RANGE_FIRST_SCANNING and j < len(rowsCsv):
+                while j < len(rowsCsv):                    
                     
                         rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)
                         secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
-                        diff = 1
+                        diff = 3
                         if secondsDiff <=1:
-                            diff = 3
+                            diff = 5
                         elif secondsDiff <= 2:
-                            diff = 2
+                            diff = 4
                         
 			if abs(int(rowsCsv[j][HEART_RATE]) - heartRateCandidate) <= diff:
 				firstNodeFound = True
@@ -134,11 +135,11 @@ while i < len(candidateNodes):
 			
                 rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)			
                 secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
-                diff = 2
+                diff = 3
                 if secondsDiff <=1:
-                    diff = 4
+                    diff = 5
                 elif secondsDiff <= 2:
-                    diff = 3			
+                    diff = 4			
 
 		if abs(heartRateCandidate - heartRateRow) <= diff:
 			j = j
@@ -193,7 +194,8 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
         
             speed = int((distance / timePassed) * 3.6)
             
-        cadence = currentNode.find('.//ns:Cadence', namespaces={'ns': namespace}).text
+        cadenceNode = currentNode.find('.//ns:Cadence', namespaces={'ns': namespace})
+        cadence = cadenceNode.text if cadenceNode != None else '0'
 	
 	print i, ' ', dateNode, ' ', heartRate, ' ', speed, ' ', cadence
 	
