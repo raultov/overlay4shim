@@ -151,6 +151,7 @@ while i < len(candidateNodes):
                         ratio = float(j) / len(rowsCsv)
                         
                         if ratio < MIN_MATCHING_RATIO and heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
+                        #if heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
                             firstNodeFound = False
                             # Clear list of selected Nodes
                             selectedNodes = []
