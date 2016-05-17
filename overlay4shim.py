@@ -226,9 +226,7 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 
 	img.write_to_png(currentFolder + "/myfile%d.png" % h)          
 
-	if h <= MAX_PNG_FILES_PER_FOLDER:
-		h = h + 1
-
+	h = h + 1
 	i = i + 1
 
 
