@@ -4,6 +4,7 @@ import csv
 import sys
 from lxml import etree
 import datetime, dateutil.parser, dateutil.tz
+import os
 
 from pudb import set_trace; set_trace()
 
