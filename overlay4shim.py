@@ -22,6 +22,7 @@ HEART_RATE = 9
 # Ohter constants
 MAX_RANGE_FIRST_SCANNING = 10
 MIN_MATCHING_RATIO = 0.3
+MAX_PNG_FILES_PER_FOLDER = 499
 
 if len(sys.argv) < 4:
     print 'usage: ',sys.argv[0], ' <file.tcx> <file.csv> <template.svg>'
@@ -164,6 +165,9 @@ with open(sys.argv[3], 'r') as svgFile:
 
 i = 0
 j = 0
+k = 1
+h = 0
+baseFolder = 'output'
 nextIndex = selectedNodes[0][1] if len(selectedNodes) > 0 else 0
 currentNode = selectedNodes[0][0] if len(selectedNodes) > 0 else None
 while i < len(rowsCsv) and len(selectedNodes) > 0:
@@ -171,13 +175,13 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 	if i >= selectedNodes[0][1]:
 		# The first node has been overtaken
 		if j + 1 < len(selectedNodes):
-                    nextIndex = selectedNodes[j+1][1]
+					nextIndex = selectedNodes[j+1][1]
                 
-                if i >= nextIndex and j + 1 < len(selectedNodes):
-                    previousTrackPoint = selectedNodes[j][0]
-                    j = j + 1
+		if i >= nextIndex and j + 1 < len(selectedNodes):
+			previousTrackPoint = selectedNodes[j][0]
+			j = j + 1
                     
-        currentNode = selectedNodes[j][0]
+	currentNode = selectedNodes[j][0]
 		
 	dateNode = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
 	dateNode = dateNode.astimezone(to_zone)
@@ -185,34 +189,47 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 	
 	speed = 0
 	if previousTrackPoint != None:
-            currentDistance = float(currentNode.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
-            previousDistance = float(previousTrackPoint.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
-            distance = currentDistance - previousDistance
+		currentDistance = float(currentNode.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
+		previousDistance = float(previousTrackPoint.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
+		distance = currentDistance - previousDistance
+
+		currentTime = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
+		previousTime = dateutil.parser.parse(previousTrackPoint.find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
+		timePassed = float((currentTime - previousTime).total_seconds())
+
+		speed = int((distance / timePassed) * 3.6)
             
-            currentTime = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
-            previousTime = dateutil.parser.parse(previousTrackPoint.find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
-            timePassed = float((currentTime - previousTime).total_seconds())
-        
-            speed = int((distance / timePassed) * 3.6)
-            
-        cadenceNode = currentNode.find('.//ns:Cadence', namespaces={'ns': namespace})
-        cadence = cadenceNode.text if cadenceNode != None else '0'
+	cadenceNode = currentNode.find('.//ns:Cadence', namespaces={'ns': namespace})
+	cadence = cadenceNode.text if cadenceNode != None else '0'
 	
 	print i, ' ', dateNode, ' ', heartRate, ' ', speed, ' ', cadence
 	
-        svgDataMod = svgData.replace("SPEED", str(speed))
-        svgDataMod = svgDataMod.replace("CADENCE", cadence)
-        svgDataMod = svgDataMod.replace("HEART", heartRate)
-        
-        img = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1280,720)
-        ctx = cairo.Context(img)
-    
-        handle = rsvg.Handle(None, svgDataMod)
-        handle.render_cairo(ctx)
+	svgDataMod = svgData.replace("SPEED", str(speed))
+	svgDataMod = svgDataMod.replace("CADENCE", cadence)
+	svgDataMod = svgDataMod.replace("HEART", heartRate)
 
-        img.write_to_png("myfile%d.png" % i)          
+	img = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1280,720)
+	ctx = cairo.Context(img)
+
+	handle = rsvg.Handle(None, svgDataMod)
+	handle.render_cairo(ctx)
+		
+	if h > MAX_PNG_FILES_PER_FOLDER:
+		k = k + 1
+		h = 0
+		print 'Moving to new folder'
+		
+	currentFolder = baseFolder + str(k)
+	if not os.path.exists(currentFolder):
+		os.makedirs(currentFolder)		
+
+	img.write_to_png(currentFolder + "/myfile%d.png" % h)          
+
+	if h <= MAX_PNG_FILES_PER_FOLDER:
+		h = h + 1
 
 	i = i + 1
+
 
     
     
