@@ -24,6 +24,7 @@ HEART_RATE = 9
 MAX_RANGE_FIRST_SCANNING = 10
 MIN_MATCHING_RATIO = 0.3
 MAX_PNG_FILES_PER_FOLDER = 499
+MAX_FAILS = 3
 
 if len(sys.argv) < 4:
     print 'usage: ',sys.argv[0], ' <file.tcx> <file.csv> <template.svg>'
@@ -77,6 +78,7 @@ j = 0
 firstNodeFound = False
 selectedNodes = []
 previousTrackPoint = None
+nFails = 0
 
 while i < len(candidateNodes):
 	candidate = candidateNodes[i]
@@ -152,7 +154,10 @@ while i < len(candidateNodes):
 		else:
                         ratio = float(j) / len(rowsCsv)
                         
-                        if ratio < MIN_MATCHING_RATIO and heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
+                        if heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
+                            nFails = nFails + 1
+                        
+                        if nFails > MAX_FAILS and ratio < MIN_MATCHING_RATIO and heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
                         #if heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
                             firstNodeFound = False
                             # Clear list of selected Nodes
@@ -176,7 +181,7 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 	if i >= selectedNodes[0][1]:
 		# The first node has been overtaken
 		if j + 1 < len(selectedNodes):
-					nextIndex = selectedNodes[j+1][1]
+			nextIndex = selectedNodes[j+1][1]
                 
 		if i >= nextIndex and j + 1 < len(selectedNodes):
 			previousTrackPoint = selectedNodes[j][0]
