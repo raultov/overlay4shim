@@ -91,15 +91,15 @@ while i < len(candidateNodes):
 	if firstNodeFound == False:
 		j = 0
 		#while j < MAX_RANGE_FIRST_SCANNING and j < len(rowsCsv):
-                while j < len(rowsCsv):                    
-                    
-                        rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)
-                        secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
-                        diff = 3
-                        if secondsDiff <=1:
-                            diff = 5
-                        elif secondsDiff <= 2:
-                            diff = 4
+		while j < len(rowsCsv):                    
+			
+			rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)
+			secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
+			diff = 3
+			if secondsDiff <=1:
+				diff = 5
+			elif secondsDiff <= 2:
+				diff = 4
                         
 			if abs(int(rowsCsv[j][HEART_RATE]) - heartRateCandidate) <= diff:
 				firstNodeFound = True
@@ -137,13 +137,13 @@ while i < len(candidateNodes):
 		else:
 			heartRateNextRow = int(row[HEART_RATE])
 			
-                rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)			
-                secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
-                diff = 3
-                if secondsDiff <=1:
-                    diff = 5
-                elif secondsDiff <= 2:
-                    diff = 4			
+		rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)			
+		secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
+		diff = 3
+		if secondsDiff <=1:
+			diff = 5
+		elif secondsDiff <= 2:
+			diff = 4			
 
 		if abs(heartRateCandidate - heartRateRow) <= diff:
 			j = j
@@ -152,16 +152,16 @@ while i < len(candidateNodes):
 		elif abs(heartRateCandidate - heartRateNextRow) <= diff:
 			j = j + 1
 		else:
-                        ratio = float(j) / len(rowsCsv)
-                        
-                        if heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
-                            nFails = nFails + 1
-                        
-                        if nFails > MAX_FAILS and ratio < MIN_MATCHING_RATIO and heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
-                        #if heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
-                            firstNodeFound = False
-                            # Clear list of selected Nodes
-                            selectedNodes = []
+			ratio = float(j) / len(rowsCsv)
+			
+			if heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
+				nFails = nFails + 1
+			
+			if nFails > MAX_FAILS and ratio < MIN_MATCHING_RATIO and heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
+			#if heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
+				firstNodeFound = False
+				# Clear list of selected Nodes
+				selectedNodes = []
 
 	i = i + 1
         
@@ -176,6 +176,7 @@ h = 0
 baseFolder = 'output'
 nextIndex = selectedNodes[0][1] if len(selectedNodes) > 0 else 0
 currentNode = selectedNodes[0][0] if len(selectedNodes) > 0 else None
+distanceAcc = 0.0
 while i < len(rowsCsv) and len(selectedNodes) > 0:
 	
 	if i >= selectedNodes[0][1]:
@@ -194,6 +195,7 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 	heartRate = currentNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text
 	
 	speed = 0
+	distance = 0.0
 	if previousTrackPoint != None:
 		currentDistance = float(currentNode.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
 		previousDistance = float(previousTrackPoint.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
@@ -208,11 +210,20 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 	cadenceNode = currentNode.find('.//ns:Cadence', namespaces={'ns': namespace})
 	cadence = cadenceNode.text if cadenceNode != None else '0'
 	
-	print i, ' ', dateNode, ' ', heartRate, ' ', speed, ' ', cadence
+	heightNode = currentNode.find('.//ns:AltitudeMeters', namespaces={'ns': namespace})
+	heightFloat = float(heightNode.text)
+	height = "{:.1f}".format(heightFloat)
+	
+	distanceAcc = distanceAcc + distance
+	distanceStr = "{:.1f}".format(distanceAcc)
+	
+	print i, ' ', dateNode, ' ', heartRate, ' ', speed, ' ', cadence, ' ', height, ' ', distanceStr
 	
 	svgDataMod = svgData.replace("SPEED", str(speed))
 	svgDataMod = svgDataMod.replace("CADENCE", cadence)
 	svgDataMod = svgDataMod.replace("HEART", heartRate)
+	svgDataMod = svgDataMod.replace("HEIGHT", height)
+	svgDataMod = svgDataMod.replace("DISTANCE", distanceStr)
 
 	img = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1280,720)
 	ctx = cairo.Context(img)
