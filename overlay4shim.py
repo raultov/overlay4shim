@@ -5,6 +5,9 @@ import sys
 from lxml import etree
 import datetime, dateutil.parser, dateutil.tz
 import os
+import urllib2
+import base64
+from time import sleep
 
 from pudb import set_trace; set_trace()
 
@@ -25,6 +28,9 @@ MAX_RANGE_FIRST_SCANNING = 10
 MIN_MATCHING_RATIO = 0.3
 MAX_PNG_FILES_PER_FOLDER = 499
 MAX_FAILS = 3
+OPEN_STREET_MAP_QUERY = 'http://render.openstreetmap.org/cgi-bin/export?bbox=$MINLON,$MINLAT,$MAXLON,$MAXLAT&scale=6914&format=png'
+LAT_DIFF = 0.00095
+LON_DIFF = 0.00145
 
 if len(sys.argv) < 4:
     print 'usage: ',sys.argv[0], ' <file.tcx> <file.csv> <template.svg>'
@@ -128,14 +134,14 @@ while i < len(candidateNodes):
 		if j - 1 >= 0:
 			heartRatePreviousRow = int(rowsCsv[j-1][HEART_RATE])
 		else:
-			heartRatePreviousRow = int(row[HEART_RATE])
+			heartRatePreviousRow = int(rowsCsv[j][HEART_RATE])
 
 		heartRateRow = int(rowsCsv[j][HEART_RATE])
 
 		if j + 1 <len(rowsCsv):
 			heartRateNextRow = int(rowsCsv[j+1][HEART_RATE])
 		else:
-			heartRateNextRow = int(row[HEART_RATE])
+			heartRateNextRow = int(rowsCsv[j][HEART_RATE])
 			
 		rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)			
 		secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
@@ -177,6 +183,8 @@ baseFolder = 'output'
 nextIndex = selectedNodes[0][1] if len(selectedNodes) > 0 else 0
 currentNode = selectedNodes[0][0] if len(selectedNodes) > 0 else None
 distanceAcc = 0.0
+newNode = True
+img64 = None
 while i < len(rowsCsv) and len(selectedNodes) > 0:
 	
 	if i >= selectedNodes[0][1]:
@@ -186,10 +194,25 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
                 
 		if i >= nextIndex and j + 1 < len(selectedNodes):
 			previousTrackPoint = selectedNodes[j][0]
+			newNode = True
 			j = j + 1
                     
 	currentNode = selectedNodes[j][0]
-		
+	
+	if newNode == True:
+            lon = float(currentNode.find('.//ns:Position//ns:LongitudeDegrees', namespaces={'ns': namespace}).text)
+            lat = float(currentNode.find('.//ns:Position//ns:LatitudeDegrees', namespaces={'ns': namespace}).text)
+            #print "{0}, {1}".format(lon, lat)
+            query = OPEN_STREET_MAP_QUERY.replace("$MINLAT", str(lat-LAT_DIFF))
+            query = query.replace("$MAXLAT", str(lat+LAT_DIFF))
+            query = query.replace("$MINLON", str(lon-LON_DIFF))
+            query = query.replace("$MAXLON", str(lon+LON_DIFF))
+            print query
+            img = urllib2.urlopen(query).read()
+            img64 = base64.b64encode(img)
+            sleep(0.5)
+            #print "img64:", img64
+            
 	dateNode = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
 	dateNode = dateNode.astimezone(to_zone)
 	heartRate = currentNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text
@@ -214,7 +237,9 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 	heightFloat = float(heightNode.text)
 	height = "{:.1f}".format(heightFloat)
 	
-	distanceAcc = distanceAcc + distance
+	if newNode == True:
+            distanceAcc = distanceAcc + distance
+            
 	distanceStr = "{:.1f}".format(distanceAcc)
 	
 	print i, ' ', dateNode, ' ', heartRate, ' ', speed, ' ', cadence, ' ', height, ' ', distanceStr
@@ -224,6 +249,7 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 	svgDataMod = svgDataMod.replace("HEART", heartRate)
 	svgDataMod = svgDataMod.replace("HEIGHT", height)
 	svgDataMod = svgDataMod.replace("DISTANCE", distanceStr)
+	svgDataMod = svgDataMod.replace("IMAGEMAP64", img64)
 
 	img = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1280,720)
 	ctx = cairo.Context(img)
@@ -244,6 +270,8 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 
 	h = h + 1
 	i = i + 1
+	newNode = False
+		
 
 
     
