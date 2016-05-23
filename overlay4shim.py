@@ -50,9 +50,6 @@ to_zone = dateutil.tz.tzlocal()
 beginningDate = datetime.datetime(int(rowsCsv[0][YEAR]), int(rowsCsv[0][MONTH]), int(rowsCsv[0][DAY]), int(rowsCsv[0][HOUR]), int(rowsCsv[0][MINUTE]), int(rowsCsv[0][SECOND]), tzinfo=to_zone)
 endingDate = datetime.datetime(int(rowsCsv[n][YEAR]), int(rowsCsv[n][MONTH]), int(rowsCsv[n][DAY]), int(rowsCsv[n][HOUR]), int(rowsCsv[n][MINUTE]), int(rowsCsv[n][SECOND]), tzinfo=to_zone)
 
-beginningDateSub60 = beginningDate - datetime.timedelta(seconds=5)
-endingDatePlus60 = endingDate + datetime.timedelta(seconds=5)
-    
 # Read tcx file    
 doc= etree.parse(sys.argv[1])
 namespace = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2'
@@ -60,17 +57,17 @@ namespace = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2'
 i = 0
 intervalFound = False
 trackpointNodes = doc.xpath('//ns:Trackpoint', namespaces={'ns': namespace})
-candidateNodes = []
+selectedNodes = []
 
 for trackpoint in trackpointNodes:
 	d = dateutil.parser.parse(trackpoint.find('.//ns:Time', namespaces={'ns': namespace}).text)
 	d = d.astimezone(to_zone)
 
-	if d >= beginningDateSub60 and d < endingDatePlus60:
+	if d >= beginningDate and d <= endingDate:
 		intervalFound = True
-		candidateNodes.append(trackpoint)
+		selectedNodes.append(trackpoint)
 
-	if d >= endingDatePlus60:
+	if d > endingDate:
 		break
 
 	i = i + 1
@@ -78,99 +75,7 @@ for trackpoint in trackpointNodes:
 if intervalFound == False:
     print 'Files ', sys.argv[1], ' and ', sys.argv[2], ' do not match because of the dates'
     sys.exit()
-
-i = 0
-j = 0
-firstNodeFound = False
-selectedNodes = []
-previousTrackPoint = None
-nFails = 0
-
-while i < len(candidateNodes):
-	candidate = candidateNodes[i]
-
-	dateCandidate = dateutil.parser.parse(candidate.find('.//ns:Time', namespaces={'ns': namespace}).text)
-	dateCandidate = dateCandidate.astimezone(to_zone)
-
-	heartRateCandidate = int(candidate.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text)
-
-	if firstNodeFound == False:
-		j = 0
-		#while j < MAX_RANGE_FIRST_SCANNING and j < len(rowsCsv):
-		while j < len(rowsCsv):                    
-			
-			rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)
-			secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
-			diff = 3
-			if secondsDiff <=1:
-				diff = 5
-			elif secondsDiff <= 2:
-				diff = 4
-                        
-			if abs(int(rowsCsv[j][HEART_RATE]) - heartRateCandidate) <= diff:
-				firstNodeFound = True
-				# Append current candidate to the list of selected Nodes
-				selectedNodes.append([candidate, j])	
-				
-				if i - 1 >= 0:
-                                    previousTrackPoint = candidateNodes[i-1]
-				
-				break
-
-			j = j + 1
-	else:
-		datePreviousCandidate = dateutil.parser.parse(candidateNodes[i-1].find('.//ns:Time', namespaces={'ns': namespace}).text)
-		datePreviousCandidate = datePreviousCandidate.astimezone(to_zone)
-		j = j + int((dateCandidate - datePreviousCandidate).total_seconds())
-
-		if j >= len(rowsCsv):
-			break
-			
-		# Append current candidate to the list of selected Nodes
-		selectedNodes.append([candidate, j])			
-
-		#print j, ' ', dateCandidate, ' ', rowsCsv[j][HEART_RATE]
-
-		if j - 1 >= 0:
-			heartRatePreviousRow = int(rowsCsv[j-1][HEART_RATE])
-		else:
-			heartRatePreviousRow = int(rowsCsv[j][HEART_RATE])
-
-		heartRateRow = int(rowsCsv[j][HEART_RATE])
-
-		if j + 1 <len(rowsCsv):
-			heartRateNextRow = int(rowsCsv[j+1][HEART_RATE])
-		else:
-			heartRateNextRow = int(rowsCsv[j][HEART_RATE])
-			
-		rowsCsvDate = datetime.datetime(int(rowsCsv[j][YEAR]), int(rowsCsv[j][MONTH]), int(rowsCsv[j][DAY]), int(rowsCsv[j][HOUR]), int(rowsCsv[j][MINUTE]), int(rowsCsv[j][SECOND]), tzinfo=to_zone)			
-		secondsDiff = abs((rowsCsvDate - dateCandidate).total_seconds())
-		diff = 3
-		if secondsDiff <=1:
-			diff = 5
-		elif secondsDiff <= 2:
-			diff = 4			
-
-		if abs(heartRateCandidate - heartRateRow) <= diff:
-			j = j
-		elif abs(heartRateCandidate -  heartRatePreviousRow) <= diff:
-			j = j - 1
-		elif abs(heartRateCandidate - heartRateNextRow) <= diff:
-			j = j + 1
-		else:
-			ratio = float(j) / len(rowsCsv)
-			
-			if heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
-				nFails = nFails + 1
-			
-			if nFails > MAX_FAILS and ratio < MIN_MATCHING_RATIO and heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
-			#if heartRateRow != 0 and heartRateNextRow != 0 and heartRatePreviousRow != 0:
-				firstNodeFound = False
-				# Clear list of selected Nodes
-				selectedNodes = []
-
-	i = i + 1
-        
+    
 # PNGs creation
 with open(sys.argv[3], 'r') as svgFile:
     svgData=svgFile.read().replace('\n', '')
