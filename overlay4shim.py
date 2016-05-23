@@ -200,18 +200,18 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 	currentNode = selectedNodes[j][0]
 	
 	if newNode == True:
-            lon = float(currentNode.find('.//ns:Position//ns:LongitudeDegrees', namespaces={'ns': namespace}).text)
-            lat = float(currentNode.find('.//ns:Position//ns:LatitudeDegrees', namespaces={'ns': namespace}).text)
-            #print "{0}, {1}".format(lon, lat)
-            query = OPEN_STREET_MAP_QUERY.replace("$MINLAT", str(lat-LAT_DIFF))
-            query = query.replace("$MAXLAT", str(lat+LAT_DIFF))
-            query = query.replace("$MINLON", str(lon-LON_DIFF))
-            query = query.replace("$MAXLON", str(lon+LON_DIFF))
-            print query
-            img = urllib2.urlopen(query).read()
-            img64 = base64.b64encode(img)
-            sleep(0.5)
-            #print "img64:", img64
+		lon = float(currentNode.find('.//ns:Position//ns:LongitudeDegrees', namespaces={'ns': namespace}).text)
+		lat = float(currentNode.find('.//ns:Position//ns:LatitudeDegrees', namespaces={'ns': namespace}).text)
+		#print "{0}, {1}".format(lon, lat)
+		query = OPEN_STREET_MAP_QUERY.replace("$MINLAT", str(lat-LAT_DIFF))
+		query = query.replace("$MAXLAT", str(lat+LAT_DIFF))
+		query = query.replace("$MINLON", str(lon-LON_DIFF))
+		query = query.replace("$MAXLON", str(lon+LON_DIFF))
+		print query
+		img = urllib2.urlopen(query).read()
+		img64 = base64.b64encode(img)
+		sleep(0.5)
+		#print "img64:", img64
             
 	dateNode = dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text)
 	dateNode = dateNode.astimezone(to_zone)
@@ -238,7 +238,7 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 	height = "{:.1f}".format(heightFloat)
 	
 	if newNode == True:
-            distanceAcc = distanceAcc + distance
+		distanceAcc = distanceAcc + distance
             
 	distanceStr = "{:.1f}".format(distanceAcc)
 	
