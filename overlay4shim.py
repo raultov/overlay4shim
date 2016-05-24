@@ -23,11 +23,8 @@ CADENCE = 7
 POWER = 8
 HEART_RATE = 9
 
-# Ohter constants
-MAX_RANGE_FIRST_SCANNING = 10
-MIN_MATCHING_RATIO = 0.3
+# Other constants
 MAX_PNG_FILES_PER_FOLDER = 499
-MAX_FAILS = 3
 OPEN_STREET_MAP_QUERY = 'http://render.openstreetmap.org/cgi-bin/export?bbox=$MINLON,$MINLAT,$MAXLON,$MAXLAT&scale=6914&format=png'
 LAT_DIFF = 0.00095
 LON_DIFF = 0.00145
