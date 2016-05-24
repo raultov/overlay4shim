@@ -84,25 +84,35 @@ i = 0
 j = 0
 k = 1
 h = 0
+m = 0
+total = int((endingDate - beginningDate).total_seconds())
 baseFolder = 'output'
-nextIndex = selectedNodes[0][1] if len(selectedNodes) > 0 else 0
-currentNode = selectedNodes[0][0] if len(selectedNodes) > 0 else None
+currentNode = selectedNodes[0] if len(selectedNodes) > 0 else None
+currentDate = beginningDate
+nextDate = 	dateutil.parser.parse(currentNode.find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone) if currentNode != None else None
+previousTrackPoint = None
 distanceAcc = 0.0
 newNode = True
 img64 = None
-while i < len(rowsCsv) and len(selectedNodes) > 0:
+while i < total and len(selectedNodes) > 0:
+
+	lengthInterval = int((nextDate - currentDate).total_seconds())
 	
-	if i >= selectedNodes[0][1]:
-		# The first node has been overtaken
-		if j + 1 < len(selectedNodes):
-			nextIndex = selectedNodes[j+1][1]
-                
-		if i >= nextIndex and j + 1 < len(selectedNodes):
-			previousTrackPoint = selectedNodes[j][0]
+	if m > lengthInterval:
+		# Move to the next interval
+		m = 0
+		j = j + 1
+		currentDate = nextDate
+		
+		if j < len(selectedNodes):
+			previousTrackPoint = selectedNodes[j-1]
+			nextDate = dateutil.parser.parse(selectedNodes[j].find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
 			newNode = True
-			j = j + 1
+		else:
+			nextDate = endingDate
+			j = j - 1
                     
-	currentNode = selectedNodes[j][0]
+	currentNode = selectedNodes[j]
 	
 	if newNode == True:
 		lon = float(currentNode.find('.//ns:Position//ns:LongitudeDegrees', namespaces={'ns': namespace}).text)
@@ -175,6 +185,7 @@ while i < len(rowsCsv) and len(selectedNodes) > 0:
 
 	h = h + 1
 	i = i + 1
+	m = m + 1
 	newNode = False
 		
 
