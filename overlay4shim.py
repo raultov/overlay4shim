@@ -182,6 +182,7 @@ h = 0
 baseFolder = 'output'
 nextIndex = selectedNodes[0][1] if len(selectedNodes) > 0 else 0
 currentNode = selectedNodes[0][0] if len(selectedNodes) > 0 else None
+previousTrackPoint = None
 distanceAcc = 0.0
 newNode = True
 img64 = None
