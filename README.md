@@ -14,3 +14,4 @@ Python requirements:
 - Modules gir1.2-rsvg-2.0 python-rsvg for svg processing
 - Module python-lxml for XML processing
 - Module python-dateutil for date processing
+- pip install pudb for debugging purposes (it is optional)

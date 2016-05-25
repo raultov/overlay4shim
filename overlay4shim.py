@@ -9,7 +9,7 @@ import urllib2
 import base64
 from time import sleep
 
-from pudb import set_trace; set_trace()
+#from pudb import set_trace; set_trace()
 
 # CSV constants
 YEAR = 0
