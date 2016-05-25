@@ -1,20 +1,4 @@
-Skip to content
-This repository
-Search
-Pull requests
-Issues
-Gist
- @raultov
- Unwatch 1
-  Star 0
-  Fork 0 raultov/overlay4shim
- Code  Issues 0  Pull requests 0  Wiki  Pulse  Graphs  Settings
-Branch: 1.5 Find file Copy pathoverlay4shim/overlay4shim.py
-6a9ca7d  a day ago
-@raultov raultov clean code
-1 contributor
-RawBlameHistory    194 lines (148 sloc)  5.8 KB
-import cairo
+
 import rsvg
 import csv
 import sys
