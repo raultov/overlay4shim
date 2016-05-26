@@ -28,6 +28,8 @@ MAX_PNG_FILES_PER_FOLDER = 499
 OPEN_STREET_MAP_QUERY = 'http://render.openstreetmap.org/cgi-bin/export?bbox=$MINLON,$MINLAT,$MAXLON,$MAXLAT&scale=6914&format=png'
 LAT_DIFF = 0.00095
 LON_DIFF = 0.00145
+VIDEO_OUTPUT_WIDTH = 1280
+VIDEO_OUTPUT_HEIGH = 720
 
 def main():
 	if len(sys.argv) < 4:
@@ -44,12 +46,13 @@ def main():
 	rowsCsv.pop(0)
 	n = len(rowsCsv) - 1
 
+        # Dates to local time
 	to_zone = dateutil.tz.tzlocal()    
 	beginningDate = datetime.datetime(int(rowsCsv[0][YEAR]), int(rowsCsv[0][MONTH]), int(rowsCsv[0][DAY]), int(rowsCsv[0][HOUR]), int(rowsCsv[0][MINUTE]), int(rowsCsv[0][SECOND]), tzinfo=to_zone)
 	endingDate = datetime.datetime(int(rowsCsv[n][YEAR]), int(rowsCsv[n][MONTH]), int(rowsCsv[n][DAY]), int(rowsCsv[n][HOUR]), int(rowsCsv[n][MINUTE]), int(rowsCsv[n][SECOND]), tzinfo=to_zone)
 
-	beginningDateSub60 = beginningDate - datetime.timedelta(seconds=20)
-	endingDatePlus60 = endingDate + datetime.timedelta(seconds=20)
+	beginningDateSub60 = beginningDate - datetime.timedelta(seconds=60)
+	endingDatePlus60 = endingDate + datetime.timedelta(seconds=60)
 
 	# Read tcx file    
 	doc= etree.parse(sys.argv[1])
@@ -61,6 +64,8 @@ def main():
 	candidates = []
 
 	while i < len(trackpointNodes):
+                # Loop over all trackpoints to select a subset delimited by beginningDate and endingDate
+                # Put a trackpoint or None object for every second into the candidates array
 		d = dateutil.parser.parse(trackpointNodes[i].find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
 
 		if d >= beginningDateSub60 and d < endingDatePlus60:
@@ -75,7 +80,7 @@ def main():
 
 			j = 1
 			while j < r:
-				#d = d + datetime.timedelta(0,1)
+				# Put None where there is no tcx trackpoint in order to fill empty spaces into the candidates array
 				candidates.append([None, 0])
 				j = j + 1
 
@@ -92,7 +97,7 @@ def main():
 	minCost = float("inf")
 	minCostIndex = 0
 	while i < len(candidates) and i < len(candidates) - len(rowsCsv):
-
+                # Find the index where begins the set of candidates with less cost
 		cost = calculateCost(candidates, rowsCsv, i)
 		if cost < minCost:
 			minCost = cost
@@ -105,8 +110,10 @@ def main():
 	i = minCostIndex
 	j = 0
 	while j < len(rowsCsv):
+                # Starting from the index calculated above, put the set with minimum cost into a new array called selectedNodes
 		selectedNodes.append(candidates[i][0])
 		if firstSelectedNode == None and candidates[i][0] != None:
+                        # Store the first node in a variable called firstSelectedNode
 			firstSelectedNode = candidates[i][0]
 
 		i = i + 1
@@ -114,6 +121,7 @@ def main():
 
 
 	# PNGs creation
+	# Read svg template
 	with open(sys.argv[3], 'r') as svgFile:
 		svgData=svgFile.read().replace('\n', '')
 
@@ -136,10 +144,9 @@ def main():
 				newNode = True
 
 			if newNode == True:
-				# Download image when there a new valid node or at the beginning still there is no previous valid Node
+				# Download image when there is a new valid node or at the beginning there is still no previous valid Node
 				lon = float(currentValidNode.find('.//ns:Position//ns:LongitudeDegrees', namespaces={'ns': namespace}).text)
 				lat = float(currentValidNode.find('.//ns:Position//ns:LatitudeDegrees', namespaces={'ns': namespace}).text)
-				#print "{0}, {1}".format(lon, lat)
 				query = OPEN_STREET_MAP_QUERY.replace("$MINLAT", str(lat-LAT_DIFF))
 				query = query.replace("$MAXLAT", str(lat+LAT_DIFF))
 				query = query.replace("$MINLON", str(lon-LON_DIFF))
@@ -147,8 +154,8 @@ def main():
 				print query
 				img = urllib2.urlopen(query).read()
 				img64 = base64.b64encode(img)
+				# Sleep 500 ms to avoid openstreetmap server gets overloaded
 				sleep(0.5)
-				#print "img64:", img64
 
 			dateNode = dateutil.parser.parse(currentValidNode.find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
 			heartRate = currentValidNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text
@@ -156,6 +163,7 @@ def main():
 			speed = 0
 			distance = 0.0
 			if previousValidNode != None:
+                                # Taking the previous Node and the current one, calculate speed and distance 
 				currentDistance = float(currentValidNode.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
 				previousDistance = float(previousValidNode.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
 				distance = currentDistance - previousDistance
@@ -173,12 +181,14 @@ def main():
 			height = "{:.1f}".format(heightFloat)
 
 			if newNode == True:
+                                # Total distance
 				distanceAcc = distanceAcc + distance
 
 			distanceStr = "{:.1f}".format(distanceAcc)
 
 			print i, ' ', dateNode, ' ', heartRate, ' ', speed, ' ', cadence, ' ', height, ' ', distanceStr
 
+                        # Set data values in the template
 			svgDataMod = svgData.replace("SPEED", str(speed))
 			svgDataMod = svgDataMod.replace("CADENCE", cadence)
 			svgDataMod = svgDataMod.replace("HEART", heartRate)
@@ -186,12 +196,14 @@ def main():
 			svgDataMod = svgDataMod.replace("DISTANCE", distanceStr)
 			svgDataMod = svgDataMod.replace("IMAGEMAP64", img64)
 
-			img = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1280,720)
+			img = cairo.ImageSurface(cairo.FORMAT_ARGB32, VIDEO_OUTPUT_WIDTH, VIDEO_OUTPUT_HEIGH)
 			ctx = cairo.Context(img)
 
 			handle = rsvg.Handle(None, svgDataMod)
 			handle.render_cairo(ctx)
 
+                        # Openshot does not work well when number of images is greater than 500 therefore, a new folder is created each time that 
+                        # the number of images overpasses 499
 			if h > MAX_PNG_FILES_PER_FOLDER:
 				k = k + 1
 				h = 0
@@ -207,7 +219,7 @@ def main():
 			h = h + 1
 			i = i + 1
 
-# Function to calculate the cost of an specified array when comparing it against the optimum one
+# Function to calculate the cost of an specified array when comparing it with the array base coming from a CSV data
 def calculateCost(candidates, base, begin):
 
 	cost = 0.0
