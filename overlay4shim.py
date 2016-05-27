@@ -46,7 +46,7 @@ def main():
 	rowsCsv.pop(0)
 	n = len(rowsCsv) - 1
 
-        # Dates to local time
+	# Dates to local time
 	to_zone = dateutil.tz.tzlocal()    
 	beginningDate = datetime.datetime(int(rowsCsv[0][YEAR]), int(rowsCsv[0][MONTH]), int(rowsCsv[0][DAY]), int(rowsCsv[0][HOUR]), int(rowsCsv[0][MINUTE]), int(rowsCsv[0][SECOND]), tzinfo=to_zone)
 	endingDate = datetime.datetime(int(rowsCsv[n][YEAR]), int(rowsCsv[n][MONTH]), int(rowsCsv[n][DAY]), int(rowsCsv[n][HOUR]), int(rowsCsv[n][MINUTE]), int(rowsCsv[n][SECOND]), tzinfo=to_zone)
@@ -64,8 +64,8 @@ def main():
 	candidates = []
 
 	while i < len(trackpointNodes):
-                # Loop over all trackpoints to select a subset delimited by beginningDate and endingDate
-                # Put a trackpoint or None object for every second into the candidates array
+		# Loop over all trackpoints to select a subset delimited by beginningDate and endingDate
+		# Put a trackpoint or None object for every second into the candidates array
 		d = dateutil.parser.parse(trackpointNodes[i].find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
 
 		if d >= beginningDateSub60 and d < endingDatePlus60:
@@ -97,7 +97,7 @@ def main():
 	minCost = float("inf")
 	minCostIndex = 0
 	while i < len(candidates) and i < len(candidates) - len(rowsCsv):
-                # Find the index where begins the set of candidates with less cost
+		# Find the index where begins the set of candidates with less cost
 		cost = calculateCost(candidates, rowsCsv, i)
 		if cost < minCost:
 			minCost = cost
@@ -110,10 +110,10 @@ def main():
 	i = minCostIndex
 	j = 0
 	while j < len(rowsCsv):
-                # Starting from the index calculated above, put the set with minimum cost into a new array called selectedNodes
+		# Starting from the index calculated above, put the set with minimum cost into a new array called selectedNodes
 		selectedNodes.append(candidates[i][0])
 		if firstSelectedNode == None and candidates[i][0] != None:
-                        # Store the first node in a variable called firstSelectedNode
+			# Store the first node in a variable called firstSelectedNode
 			firstSelectedNode = candidates[i][0]
 
 		i = i + 1
@@ -163,7 +163,7 @@ def main():
 			speed = 0
 			distance = 0.0
 			if previousValidNode != None:
-                                # Taking the previous Node and the current one, calculate speed and distance 
+				# Taking the previous Node and the current one, calculate speed and distance 
 				currentDistance = float(currentValidNode.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
 				previousDistance = float(previousValidNode.find('.//ns:DistanceMeters', namespaces={'ns': namespace}).text)
 				distance = currentDistance - previousDistance
@@ -181,14 +181,14 @@ def main():
 			height = "{:.1f}".format(heightFloat)
 
 			if newNode == True:
-                                # Total distance
+				# Calculate total distance
 				distanceAcc = distanceAcc + distance
 
 			distanceStr = "{:.1f}".format(distanceAcc)
 
 			print i, ' ', dateNode, ' ', heartRate, ' ', speed, ' ', cadence, ' ', height, ' ', distanceStr
 
-                        # Set data values in the template
+			# Set data values in the template
 			svgDataMod = svgData.replace("SPEED", str(speed))
 			svgDataMod = svgDataMod.replace("CADENCE", cadence)
 			svgDataMod = svgDataMod.replace("HEART", heartRate)
@@ -202,8 +202,8 @@ def main():
 			handle = rsvg.Handle(None, svgDataMod)
 			handle.render_cairo(ctx)
 
-                        # Openshot does not work well when number of images is greater than 500 therefore, a new folder is created each time that 
-                        # the number of images overpasses 499
+			# Openshot does not work well when number of images is greater than 500 therefore, a new folder is created each time that 
+			# the number of images overpasses 499
 			if h > MAX_PNG_FILES_PER_FOLDER:
 				k = k + 1
 				h = 0
