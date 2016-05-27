@@ -8,6 +8,8 @@ import os
 import urllib2
 import base64
 from time import sleep
+import signal
+import argparse
 
 #from pudb import set_trace; set_trace()
 
@@ -32,30 +34,65 @@ VIDEO_OUTPUT_WIDTH = 1280
 VIDEO_OUTPUT_HEIGH = 720
 
 def main():
-	if len(sys.argv) < 4:
-		print 'usage: ',sys.argv[0], ' <file.tcx> <file.csv> <template.svg>'
-		sys.exit()   
 
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-v", "--version", action="version", version="%(prog)s 2.0")
+	parser.add_argument("-c", "--csv", help="CSV file to search STARTING and ENDING times")
+	parser.add_argument("-s", "--start", help="Video start time yyyy-mm-dd-HH:MM:SS")
+	parser.add_argument("-e", "--end", help="Video end time yyyy-mm-dd-HH:MM:SS")
+	parser.add_argument("tcx_file", help="TCX file")
+	parser.add_argument("svg_file", help="SVG template")
+	args = parser.parse_args()
 
-	# Read csv file
-	with open(sys.argv[2], 'rb') as f:
-		reader = csv.reader(f)
-		rowsCsv = list(reader)
+	if (args.start != None and args.end == None) or (args.start == None and args.end != None):
+		print "Must specify start and end dates"
+		sys.exit()
 		
-	# Erase CSV header
-	rowsCsv.pop(0)
-	n = len(rowsCsv) - 1
+	if (args.start and args.csv) or (args.start == None and args.csv == None):
+		print "Must specify either CSV file or starting and ending times"
+		sys.exit()
 
+	# Ctrl+c handler
+	signal.signal(signal.SIGINT, signal_handler)
+	
+	n = 0
+	beginningDateLimit = None
+	endingDateLimit = None
 	# Dates to local time
-	to_zone = dateutil.tz.tzlocal()    
-	beginningDate = datetime.datetime(int(rowsCsv[0][YEAR]), int(rowsCsv[0][MONTH]), int(rowsCsv[0][DAY]), int(rowsCsv[0][HOUR]), int(rowsCsv[0][MINUTE]), int(rowsCsv[0][SECOND]), tzinfo=to_zone)
-	endingDate = datetime.datetime(int(rowsCsv[n][YEAR]), int(rowsCsv[n][MONTH]), int(rowsCsv[n][DAY]), int(rowsCsv[n][HOUR]), int(rowsCsv[n][MINUTE]), int(rowsCsv[n][SECOND]), tzinfo=to_zone)
+	to_zone = dateutil.tz.tzlocal()
+	rowsCsv = None
+	
+	if args.csv:
+		# Read csv file
+		with open(sys.argv[2], 'rb') as f:
+			reader = csv.reader(f)
+			rowsCsv = list(reader)
+			
+		# Erase CSV header
+		rowsCsv.pop(0)
+		n = len(rowsCsv)
+		m = n - 1
 
-	beginningDateSub60 = beginningDate - datetime.timedelta(seconds=60)
-	endingDatePlus60 = endingDate + datetime.timedelta(seconds=60)
+		beginningDate = datetime.datetime(int(rowsCsv[0][YEAR]), int(rowsCsv[0][MONTH]), int(rowsCsv[0][DAY]), int(rowsCsv[0][HOUR]), int(rowsCsv[0][MINUTE]), int(rowsCsv[0][SECOND]), tzinfo=to_zone)
+		endingDate = datetime.datetime(int(rowsCsv[m][YEAR]), int(rowsCsv[m][MONTH]), int(rowsCsv[m][DAY]), int(rowsCsv[m][HOUR]), int(rowsCsv[m][MINUTE]), int(rowsCsv[m][SECOND]), tzinfo=to_zone)
 
+		beginningDateLimit = beginningDate - datetime.timedelta(seconds=60)
+		endingDateLimit = endingDate + datetime.timedelta(seconds=60)
+	else:
+		try:
+			beginningDateLimit = datetime.datetime.strptime(args.start, '%Y-%m-%d-%H:%M:%S').replace(tzinfo=to_zone)
+			endingDateLimit = datetime.datetime.strptime(args.end, '%Y-%m-%d-%H:%M:%S').replace(tzinfo=to_zone)
+			n = int((endingDateLimit - beginningDateLimit).total_seconds())
+			
+			if (n <= 0):
+				print "Ending time must be newer than beginning time"
+				sys.exit()
+		except ValueError:
+			print "Date format must be yyyy-mm-dd-HH:MM:SS"
+			sys.exit()
+			
 	# Read tcx file    
-	doc= etree.parse(sys.argv[1])
+	doc= etree.parse(args.tcx_file)
 	namespace = 'http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2'
 
 	i = 0
@@ -68,7 +105,7 @@ def main():
 		# Put a trackpoint or None object for every second into the candidates array
 		d = dateutil.parser.parse(trackpointNodes[i].find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
 
-		if d >= beginningDateSub60 and d < endingDatePlus60:
+		if d >= beginningDateLimit and d < endingDateLimit:
 			intervalFound = True
 
 			nextDate = dateutil.parser.parse(trackpointNodes[i+1].find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone) if i + 1 < len(trackpointNodes) else d
@@ -84,45 +121,55 @@ def main():
 				candidates.append([None, 0])
 				j = j + 1
 
-		if d >= endingDatePlus60:
+		if d >= endingDateLimit:
 			break
 
 		i = i + 1
 
 	if intervalFound == False:
-		print 'Files ', sys.argv[1], ' and ', sys.argv[2], ' do not match because of the dates'
+		print 'Could not find video interval of time in tcx data'
 		sys.exit()
-
-	i = 0
-	minCost = float("inf")
-	minCostIndex = 0
-	while i < len(candidates) and i < len(candidates) - len(rowsCsv):
-		# Find the index where begins the set of candidates with less cost
-		cost = calculateCost(candidates, rowsCsv, i)
-		if cost < minCost:
-			minCost = cost
-			minCostIndex = i
-
-		i = i + 1
-
+		
 	selectedNodes = []
 	firstSelectedNode = None
-	i = minCostIndex
-	j = 0
-	while j < len(rowsCsv):
-		# Starting from the index calculated above, put the set with minimum cost into a new array called selectedNodes
-		selectedNodes.append(candidates[i][0])
-		if firstSelectedNode == None and candidates[i][0] != None:
-			# Store the first node in a variable called firstSelectedNode
-			firstSelectedNode = candidates[i][0]
 
-		i = i + 1
-		j = j + 1
+	if args.csv:
+		i = 0
+		minCost = float("inf")
+		minCostIndex = 0
+		while i < len(candidates) and i < len(candidates) - n:
+			# Find the index where begins the set of candidates with less cost
+			cost = calculateCost(candidates, rowsCsv, i)
+			if cost < minCost:
+				minCost = cost
+				minCostIndex = i
 
+			i = i + 1
+
+		i = minCostIndex
+		j = 0
+		while j < n:
+			# Starting from the index calculated above, put the set with minimum cost into a new array called selectedNodes
+			selectedNodes.append(candidates[i][0])
+			if firstSelectedNode == None and candidates[i][0] != None:
+				# Store the first node in a variable called firstSelectedNode
+				firstSelectedNode = candidates[i][0]
+
+			i = i + 1
+			j = j + 1
+	else:
+		i = 0
+		while i < n:
+			selectedNodes.append(candidates[i][0])
+			if firstSelectedNode == None and candidates[i][0] != None:
+				# Store the first node in a variable called firstSelectedNode
+				firstSelectedNode = candidates[i][0]
+			
+			i = i + 1
 
 	# PNGs creation
 	# Read svg template
-	with open(sys.argv[3], 'r') as svgFile:
+	with open(args.svg_file, 'r') as svgFile:
 		svgData=svgFile.read().replace('\n', '')
 
 	if firstSelectedNode != None:
@@ -241,6 +288,10 @@ def calculateCost(candidates, base, begin):
 		j = j + 1
 
 	return cost / computedRegisters
+
+def signal_handler(signal, frame):
+	print('You pressed Ctrl+C!')
+	sys.exit(0)
 
 if __name__ == '__main__':
 	main()
