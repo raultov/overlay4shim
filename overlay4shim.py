@@ -192,17 +192,18 @@ def main():
 
 			if newNode == True:
 				# Download image when there is a new valid node or at the beginning there is still no previous valid Node
-				lon = float(currentValidNode.find('.//ns:Position//ns:LongitudeDegrees', namespaces={'ns': namespace}).text)
-				lat = float(currentValidNode.find('.//ns:Position//ns:LatitudeDegrees', namespaces={'ns': namespace}).text)
-				query = OPEN_STREET_MAP_QUERY.replace("$MINLAT", str(lat-LAT_DIFF))
-				query = query.replace("$MAXLAT", str(lat+LAT_DIFF))
-				query = query.replace("$MINLON", str(lon-LON_DIFF))
-				query = query.replace("$MAXLON", str(lon+LON_DIFF))
-				print query
-				img = urllib2.urlopen(query).read()
-				img64 = base64.b64encode(img)
-				# Sleep 500 ms to avoid openstreetmap server gets overloaded
-				sleep(0.5)
+				if currentValidNode.find('.//ns:Position//ns:LongitudeDegrees', namespaces={'ns': namespace}) != None and currentValidNode.find('.//ns:Position//ns:LatitudeDegrees', namespaces={'ns': namespace}) != None:
+					lon = float(currentValidNode.find('.//ns:Position//ns:LongitudeDegrees', namespaces={'ns': namespace}).text)
+					lat = float(currentValidNode.find('.//ns:Position//ns:LatitudeDegrees', namespaces={'ns': namespace}).text)
+					query = OPEN_STREET_MAP_QUERY.replace("$MINLAT", str(lat-LAT_DIFF))
+					query = query.replace("$MAXLAT", str(lat+LAT_DIFF))
+					query = query.replace("$MINLON", str(lon-LON_DIFF))
+					query = query.replace("$MAXLON", str(lon+LON_DIFF))
+					print query
+					img = urllib2.urlopen(query).read()
+					img64 = base64.b64encode(img)
+					# Sleep 500 ms to avoid openstreetmap server gets overloaded
+					sleep(0.5)
 
 			dateNode = dateutil.parser.parse(currentValidNode.find('.//ns:Time', namespaces={'ns': namespace}).text).astimezone(to_zone)
 			heartRate = currentValidNode.find('.//ns:HeartRateBpm//ns:Value', namespaces={'ns': namespace}).text
