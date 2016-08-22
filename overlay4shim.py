@@ -288,7 +288,10 @@ def calculateCost(candidates, base, begin):
 		i = i + 1
 		j = j + 1
 
-	return cost / computedRegisters
+	if computedRegisters > 0:
+		return cost / computedRegisters
+	else:
+		return float("inf")
 
 def signal_handler(signal, frame):
 	print('You pressed Ctrl+C!')
