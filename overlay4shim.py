@@ -27,6 +27,7 @@ HEART_RATE = 9
 
 # Other constants
 MAX_PNG_FILES_PER_FOLDER = 499
+OPEN_STREET_MAP_MAIN = 'http://www.openstreetmap.org'
 OPEN_STREET_MAP_QUERY = 'http://render.openstreetmap.org/cgi-bin/export?bbox=$MINLON,$MINLAT,$MAXLON,$MAXLAT&scale=6914&format=png'
 LAT_DIFF = 0.00095
 LON_DIFF = 0.00145
@@ -172,6 +173,9 @@ def main():
 	with open(args.svg_file, 'r') as svgFile:
 		svgData=svgFile.read().replace('\n', '')
 
+	# Get cookies
+	cookies = getCookies(OPEN_STREET_MAP_MAIN)
+
 	if firstSelectedNode != None:
 		currentValidNode = firstSelectedNode
 		previousValidNode = None
@@ -200,7 +204,13 @@ def main():
 					query = query.replace("$MINLON", str(lon-LON_DIFF))
 					query = query.replace("$MAXLON", str(lon+LON_DIFF))
 					print query
-					img = urllib2.urlopen(query).read()
+					opener = urllib2.build_opener()
+					opener.addheaders.append(('User-Agent', 'curl/7.47.0'))
+					opener.addheaders.append(('Cookie', cookies))
+					opener.addheaders.append(('Accept', '*/*'))
+					response = opener.open(query)
+					img = response.read()
+					#img = urllib2.urlopen(query, timeout=5).read()
 					img64 = base64.b64encode(img)
 					# Sleep 500 ms to avoid openstreetmap server gets overloaded
 					sleep(0.5)
@@ -296,6 +306,12 @@ def calculateCost(candidates, base, begin):
 def signal_handler(signal, frame):
 	print('You pressed Ctrl+C!')
 	sys.exit(0)
+
+
+# Function to get cookies needed for requests
+def getCookies(url = 'http://www.openstreetmap.org'):
+	response = urllib2.urlopen(url).info()
+	return response['Set-Cookie']
 
 if __name__ == '__main__':
 	main()
